@@ -1,0 +1,17 @@
+*.iml
+.gradle
+/local.properties
+.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+app/google-services.json
+tools/migrate-legacy-data/node_modules
+tools/migrate-legacy-data/old-service-account.json
+tools/migrate-legacy-data/new-service-account.json
+tools/migrate-legacy-data/user-map.json
+app/build
+build

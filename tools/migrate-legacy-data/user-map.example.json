@@ -1,0 +1,8 @@
+[
+  {
+    "_comment": "One entry per person. oldUid/newUid come from each project's Authentication tab in the Firebase console - match rows by email.",
+    "email": "you@example.com",
+    "oldUid": "abC123OldProjectUid",
+    "newUid": "xyZ789NewProjectUid"
+  }
+]

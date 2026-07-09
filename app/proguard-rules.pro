@@ -1,0 +1,3 @@
+-keep class com.example.garage.data.local.entity.** { *; }
+-keep class com.example.garage.domain.model.** { *; }
+-keepattributes *Annotation*
