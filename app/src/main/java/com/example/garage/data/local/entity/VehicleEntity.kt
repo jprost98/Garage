@@ -6,16 +6,16 @@ import com.example.garage.domain.model.Vehicle
 
 @Entity(tableName = "vehicles")
 data class VehicleEntity(
-    @PrimaryKey val id: String,
-    val year: String,
-    val make: String,
-    val model: String,
-    val submodel: String?,
-    val engine: String?,
-    val notes: String?,
-    val odometer: Int,
-    val photoUrl: String?,
-    val createdAt: Long,
+    @PrimaryKey val id: String = "",
+    val year: String = "",
+    val make: String = "",
+    val model: String = "",
+    val submodel: String? = null,
+    val engine: String? = null,
+    val notes: String? = null,
+    val odometer: Int = 0,
+    val photoUrl: String? = null,
+    val createdAt: Long = 0L,
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
 )

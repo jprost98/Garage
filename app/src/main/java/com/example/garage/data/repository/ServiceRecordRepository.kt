@@ -25,6 +25,9 @@ class ServiceRecordRepository @Inject constructor(
     fun observeForVehicle(vehicleId: String): Flow<List<ServiceRecord>> =
         dao.observeForVehicle(vehicleId).map { list -> list.map { it.toDomain() } }
 
+    fun observeById(id: String): Flow<ServiceRecord?> =
+        dao.observeById(id).map { it?.toDomain() }
+
     suspend fun addRecord(record: ServiceRecord): ServiceRecord {
         val withId = if (record.id.isBlank()) record.copy(id = UUID.randomUUID().toString()) else record
         dao.upsert(withId.toEntity(isSynced = false))

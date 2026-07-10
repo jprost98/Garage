@@ -7,16 +7,16 @@ import com.example.garage.domain.model.ServiceRecord
 
 @Entity(tableName = "service_records")
 data class ServiceRecordEntity(
-    @PrimaryKey val id: String,
-    val vehicleId: String,
-    val title: String,
-    val category: String,
-    val description: String?,
-    val odometer: Int,
-    val cost: Double?,
-    val date: Long,
-    val receiptPhotoUrl: String?,
-    val createdAt: Long,
+    @PrimaryKey val id: String = "",
+    val vehicleId: String = "",
+    val title: String = "",
+    val category: String = "",
+    val description: String? = null,
+    val odometer: Int = 0,
+    val cost: Double? = null,
+    val date: Long = 0L,
+    val receiptPhotoUrl: String? = null,
+    val createdAt: Long = 0L,
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false
 )
