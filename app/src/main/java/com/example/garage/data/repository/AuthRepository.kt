@@ -11,9 +11,15 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthRepository @Inject constructor(
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val userRepository: UserRepository
 ) {
     val currentUserId: String? get() = firebaseAuth.currentUser?.uid
+
+    val currentUser: GarageUser?
+        get() = firebaseAuth.currentUser?.let {
+            GarageUser(uid = it.uid, email = it.email, displayName = it.displayName)
+        }
 
     fun observeAuthState(): Flow<GarageUser?> = callbackFlow {
         val listener = FirebaseAuth.AuthStateListener { auth ->
@@ -27,12 +33,23 @@ class AuthRepository @Inject constructor(
     }
 
     suspend fun signIn(email: String, password: String): Result<Unit> = runCatching {
-        firebaseAuth.signInWithEmailAndPassword(email, password).await()
+        val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
+        result.user?.let {
+            userRepository.saveUserLocally(GarageUser(it.uid, it.email, it.displayName))
+        }
         Unit
     }
 
     suspend fun register(email: String, password: String): Result<Unit> = runCatching {
-        firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+        val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+        result.user?.let {
+            userRepository.saveUserLocally(GarageUser(it.uid, it.email, it.displayName))
+        }
+        Unit
+    }
+
+    suspend fun updateEmail(newEmail: String): Result<Unit> = runCatching {
+        firebaseAuth.currentUser?.updateEmail(newEmail)?.await()
         Unit
     }
 

@@ -1,5 +1,6 @@
 package com.example.garage.ui.vehicles
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.garage.data.repository.VehicleRepository
@@ -12,6 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class AddVehicleUiState(
+    val isEdit: Boolean = false,
     val year: String = "",
     val make: String = "",
     val model: String = "",
@@ -19,6 +21,7 @@ data class AddVehicleUiState(
     val engine: String = "",
     val odometer: String = "",
     val notes: String = "",
+    val isArchived: Boolean = false,
     val isSaving: Boolean = false,
     val error: String? = null,
     val saved: Boolean = false
@@ -26,11 +29,34 @@ data class AddVehicleUiState(
 
 @HiltViewModel
 class AddVehicleViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val vehicleRepository: VehicleRepository
 ) : ViewModel() {
 
+    private val vehicleId: String? = savedStateHandle["vehicleId"]
+
     private val _uiState = MutableStateFlow(AddVehicleUiState())
     val uiState: StateFlow<AddVehicleUiState> = _uiState.asStateFlow()
+
+    init {
+        vehicleId?.let { id ->
+            viewModelScope.launch {
+                vehicleRepository.getVehicleById(id)?.let { vehicle ->
+                    _uiState.value = AddVehicleUiState(
+                        isEdit = true,
+                        year = vehicle.year,
+                        make = vehicle.make,
+                        model = vehicle.model,
+                        submodel = vehicle.submodel ?: "",
+                        engine = vehicle.engine ?: "",
+                        odometer = vehicle.odometer.toString(),
+                        notes = vehicle.notes ?: "",
+                        isArchived = vehicle.isArchived
+                    )
+                }
+            }
+        }
+    }
 
     fun onYearChange(value: String) { _uiState.value = _uiState.value.copy(year = value, error = null) }
     fun onMakeChange(value: String) { _uiState.value = _uiState.value.copy(make = value, error = null) }
@@ -54,14 +80,15 @@ class AddVehicleViewModel @Inject constructor(
             runCatching {
                 vehicleRepository.addVehicle(
                     Vehicle(
-                        id = "",
+                        id = vehicleId ?: "",
                         year = state.year.trim(),
                         make = state.make.trim(),
                         model = state.model.trim(),
                         submodel = state.submodel.trim().ifBlank { null },
                         engine = state.engine.trim().ifBlank { null },
                         notes = state.notes.trim().ifBlank { null },
-                        odometer = state.odometer.toIntOrNull() ?: 0
+                        odometer = state.odometer.toIntOrNull() ?: 0,
+                        isArchived = state.isArchived
                     )
                 )
             }.onSuccess {

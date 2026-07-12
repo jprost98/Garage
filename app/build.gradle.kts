@@ -7,7 +7,6 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     alias(libs.plugins.room)
-    kotlin("plugin.serialization") version "2.3.0"
     id("kotlin-parcelize")
 }
 
@@ -78,13 +77,6 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
 
-    // Force Hilt version to avoid conflicts with GMS or transitive dependencies
-    configurations.all {
-        resolutionStrategy.force("com.google.dagger:hilt-android:2.60.1")
-        resolutionStrategy.force("com.google.dagger:hilt-android-compiler:2.60.1")
-        resolutionStrategy.force("com.google.dagger:hilt-core:2.60.1")
-    }
-
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
@@ -94,8 +86,8 @@ dependencies {
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.storage)
     implementation(libs.firebase.analytics)
-
-    implementation(libs.play.base)
+    implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.debug)
 
     implementation(libs.coil.compose)
     implementation(libs.work.runtime.ktx)

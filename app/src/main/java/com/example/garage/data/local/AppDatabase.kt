@@ -4,9 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import com.example.garage.data.local.dao.MaintenanceTaskDao
 import com.example.garage.data.local.dao.ServiceRecordDao
+import com.example.garage.data.local.dao.UserDao
 import com.example.garage.data.local.dao.VehicleDao
 import com.example.garage.data.local.entity.MaintenanceTaskEntity
 import com.example.garage.data.local.entity.ServiceRecordEntity
+import com.example.garage.data.local.entity.UserEntity
 import com.example.garage.data.local.entity.VehicleEntity
 
 /**
@@ -17,12 +19,18 @@ import com.example.garage.data.local.entity.VehicleEntity
  * whether a write has synced yet.
  */
 @Database(
-    entities = [VehicleEntity::class, ServiceRecordEntity::class, MaintenanceTaskEntity::class],
-    version = 1,
+    entities = [
+        VehicleEntity::class,
+        ServiceRecordEntity::class,
+        MaintenanceTaskEntity::class,
+        UserEntity::class
+    ],
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun vehicleDao(): VehicleDao
     abstract fun serviceRecordDao(): ServiceRecordDao
     abstract fun maintenanceTaskDao(): MaintenanceTaskDao
+    abstract fun userDao(): UserDao
 }

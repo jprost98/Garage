@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.garage.data.local.AppDatabase
 import com.example.garage.data.local.dao.MaintenanceTaskDao
 import com.example.garage.data.local.dao.ServiceRecordDao
+import com.example.garage.data.local.dao.UserDao
 import com.example.garage.data.local.dao.VehicleDao
 import dagger.Module
 import dagger.Provides
@@ -20,7 +21,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, "garage.db").build()
+        Room.databaseBuilder(context, AppDatabase::class.java, "garage.db")
+            .fallbackToDestructiveMigration() // Added for version bump
+            .build()
 
     @Provides
     fun provideVehicleDao(db: AppDatabase): VehicleDao = db.vehicleDao()
@@ -30,4 +33,7 @@ object DatabaseModule {
 
     @Provides
     fun provideMaintenanceTaskDao(db: AppDatabase): MaintenanceTaskDao = db.maintenanceTaskDao()
+
+    @Provides
+    fun provideUserDao(db: AppDatabase): UserDao = db.userDao()
 }

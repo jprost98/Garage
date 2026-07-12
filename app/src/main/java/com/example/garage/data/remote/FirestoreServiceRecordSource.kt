@@ -2,6 +2,7 @@ package com.example.garage.data.remote
 
 import com.example.garage.data.local.entity.ServiceRecordEntity
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreException
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -18,6 +19,11 @@ class FirestoreServiceRecordSource @Inject constructor(
     fun observe(uid: String): Flow<List<ServiceRecordEntity>> = callbackFlow {
         val registration: ListenerRegistration = collection(uid).addSnapshotListener { snapshot, error ->
             if (error != null) {
+                // If UNAVAILABLE (offline), we don't close the flow. 
+                // Firestore will automatically retry when connectivity returns.
+                if (error.code == FirebaseFirestoreException.Code.UNAVAILABLE) {
+                    return@addSnapshotListener
+                }
                 close(error)
                 return@addSnapshotListener
             }

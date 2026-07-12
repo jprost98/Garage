@@ -15,6 +15,7 @@ data class Vehicle(
     val notes: String? = null,
     val odometer: Int = 0,
     val photoUrl: String? = null,
+    val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     val title: String

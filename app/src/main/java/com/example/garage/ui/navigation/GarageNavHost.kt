@@ -3,24 +3,28 @@ package com.example.garage.ui.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.garage.ui.archive.ArchiveScreen
 import com.example.garage.ui.auth.LoginScreen
 import com.example.garage.ui.auth.RegisterScreen
 import com.example.garage.ui.components.ComingSoonScreen
 import com.example.garage.ui.components.GarageScaffold
 import com.example.garage.ui.home.HomeScreen
 import com.example.garage.ui.profile.ProfileScreen
+import com.example.garage.ui.record.LogRecordScreen
+import com.example.garage.ui.record.RecordDetailScreen
 import com.example.garage.ui.vehicles.AddVehicleScreen
+import com.example.garage.ui.vehicles.VehicleDetailScreen
 import com.example.garage.ui.vehicles.VehiclesScreen
 
 /**
- * Phase 2: Vehicles + Add Vehicle are now real. Checkups is still a stub
- * so the bottom nav doesn't crash on tap. Log Record, Maintenance, and
- * Add Task arrive in later phases - see README for the plan. Tapping a
- * vehicle in the list doesn't go anywhere yet (no detail screen built) -
+ * Phase 3: Vehicles, Add Vehicle, Vehicle Detail, Log Record, and Record
+ * Detail are all wired up now. Maintenance/Add Task are still stubs -
  * that's next.
  */
 @Composable
@@ -57,12 +61,14 @@ fun GarageNavHost() {
             GarageScaffold(
                 currentRoute = Routes.HOME,
                 onNavigate = ::navigateTopLevel,
-                onFabAction = { navController.navigate(Routes.ADD_VEHICLE) }
+                onFabAction = { },
+                showFab = false
             ) { contentModifier ->
                 HomeScreen(
                     modifier = contentModifier,
-                    onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
-                    onTaskClick = { navigateTopLevel(Routes.MAINTENANCE) }
+                    onTaskClick = { navigateTopLevel(Routes.MAINTENANCE) },
+                    onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) },
+                    onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) }
                 )
             }
         }
@@ -76,15 +82,54 @@ fun GarageNavHost() {
                 VehiclesScreen(
                     modifier = contentModifier,
                     onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
-                    onVehicleClick = { /* vehicle detail screen isn't built yet */ }
+                    onVehicleClick = { vehicleId -> navController.navigate(Routes.vehicleDetail(vehicleId)) },
+                    onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) }
                 )
             }
         }
 
-        composable(Routes.ADD_VEHICLE) {
+        composable(
+            route = Routes.ADD_VEHICLE,
+            arguments = listOf(navArgument("vehicleId") { type = NavType.StringType; nullable = true })
+        ) {
             AddVehicleScreen(
                 onClose = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.VEHICLE_DETAIL,
+            arguments = listOf(navArgument("vehicleId") { type = NavType.StringType })
+        ) {
+            VehicleDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { vehicleId -> navController.navigate(Routes.addVehicle(vehicleId)) },
+                onLogRecord = { vehicleId -> navController.navigate(Routes.logRecord(vehicleId)) },
+                onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) }
+            )
+        }
+
+        composable(
+            route = Routes.LOG_RECORD,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+                navArgument("recordId") { type = NavType.StringType; nullable = true }
+            )
+        ) {
+            LogRecordScreen(
+                onClose = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.RECORD_DETAIL,
+            arguments = listOf(navArgument("recordId") { type = NavType.StringType })
+        ) {
+            RecordDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { vehicleId, recordId -> navController.navigate(Routes.logRecord(vehicleId, recordId)) }
             )
         }
 
@@ -106,9 +151,18 @@ fun GarageNavHost() {
             ) { contentModifier ->
                 ProfileScreen(
                     modifier = contentModifier,
-                    onSignedOut = { navController.navigate(Routes.LOGIN) { popUpTo(0) } }
+                    onSignedOut = { navController.navigate(Routes.LOGIN) { popUpTo(0) } },
+                    onNavigateToArchive = { navController.navigate(Routes.ARCHIVE) }
                 )
             }
+        }
+
+        composable(Routes.ARCHIVE) {
+            ArchiveScreen(
+                onBack = { navController.popBackStack() },
+                onVehicleClick = { vehicleId -> navController.navigate(Routes.vehicleDetail(vehicleId)) },
+                onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) }
+            )
         }
     }
 }

@@ -3,25 +3,71 @@ package com.example.garage.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.garage.data.repository.AuthRepository
+import com.example.garage.data.repository.UserRepository
+import com.example.garage.domain.model.GarageUser
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Minimal for now - just enough to close the sign-in/sign-out loop while
- * the rest of the app is built out in later phases (settings, theme
- * toggle, app version, etc. will land here).
+ * Handles user profile display and updates. Profile data is stored
+ * in Room and synced to Firestore via SyncCoordinator.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val userRepository: UserRepository
 ) : ViewModel() {
 
-    val user: StateFlow<com.example.garage.domain.model.GarageUser?> =
-        authRepository.observeAuthState()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val authState: StateFlow<GarageUser?> = authRepository.observeAuthState()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authRepository.currentUser)
+
+    val user: StateFlow<GarageUser?> = authState
+        .flatMapLatest { authUser ->
+            if (authUser != null) {
+                userRepository.observeUser(authUser.uid)
+            } else {
+                flowOf(null)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authRepository.currentUser)
+
+    fun updateProfile(
+        firstName: String,
+        lastName: String,
+        email: String,
+        birthday: Long?
+    ) {
+        val authUser = authState.value ?: return
+        viewModelScope.launch {
+            var emailToSave = authUser.email
+            if (email != authUser.email && email.isNotEmpty()) {
+                authRepository.updateEmail(email)
+                    .onSuccess { emailToSave = email }
+                    .onFailure {
+                        // In a real app, show a "Re-authentication required" message
+                    }
+            }
+            
+            val updatedUser = GarageUser(
+                uid = authUser.uid,
+                firstName = firstName,
+                lastName = lastName,
+                email = emailToSave,
+                displayName = "$firstName $lastName".trim().ifEmpty { authUser.displayName },
+                birthday = birthday
+            )
+            userRepository.saveUserLocally(updatedUser)
+            userRepository.pushUnsynced()
+        }
+    }
 
     fun signOut() = authRepository.signOut()
 }

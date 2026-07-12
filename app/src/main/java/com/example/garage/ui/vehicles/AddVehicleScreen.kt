@@ -53,7 +53,10 @@ fun AddVehicleScreen(
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close")
             }
-            Text(text = "Add a vehicle", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = if (state.isEdit) "Edit vehicle" else "Add a vehicle",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
 
         Column(modifier = Modifier.padding(16.dp)) {
@@ -117,7 +120,7 @@ fun AddVehicleScreen(
                 if (state.isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary)
                 } else {
-                    Text("Save vehicle")
+                    Text(if (state.isEdit) "Save changes" else "Save vehicle")
                 }
             }
         }

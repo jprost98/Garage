@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class VehicleDetailUiState(
@@ -23,7 +24,7 @@ data class VehicleDetailUiState(
 @HiltViewModel
 class VehicleDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    vehicleRepository: VehicleRepository,
+    private val vehicleRepository: VehicleRepository,
     serviceRecordRepository: ServiceRecordRepository
 ) : ViewModel() {
 
@@ -35,4 +36,16 @@ class VehicleDetailViewModel @Inject constructor(
     ) { vehicle, records ->
         VehicleDetailUiState(vehicle = vehicle, records = records, isLoading = false)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), VehicleDetailUiState())
+
+    fun deleteVehicle() {
+        viewModelScope.launch {
+            vehicleRepository.deleteVehicle(vehicleId)
+        }
+    }
+
+    fun archiveVehicle() {
+        viewModelScope.launch {
+            vehicleRepository.setArchived(vehicleId, true)
+        }
+    }
 }

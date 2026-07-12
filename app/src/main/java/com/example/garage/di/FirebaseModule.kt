@@ -20,8 +20,9 @@ object FirebaseModule {
     @Provides
     @Singleton
     fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance().apply {
-        firestoreSettings = FirebaseFirestoreSettings.Builder(firestoreSettings)
-            .setLocalCacheSettings(com.google.firebase.firestore.persistentCacheSettings {})
+        val settings = FirebaseFirestoreSettings.Builder()
+            .setLocalCacheSettings(com.google.firebase.firestore.PersistentCacheSettings.newBuilder().build())
             .build()
+        firestoreSettings = settings
     }
 }

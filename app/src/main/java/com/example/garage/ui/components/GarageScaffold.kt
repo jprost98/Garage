@@ -47,6 +47,7 @@ fun GarageScaffold(
     currentRoute: String,
     onNavigate: (String) -> Unit,
     onFabAction: () -> Unit,
+    showFab: Boolean = true,
     onFabSecondaryAction: (() -> Unit)? = null,
     fabSecondaryLabel: String? = null,
     content: @Composable (Modifier) -> Unit
@@ -67,23 +68,25 @@ fun GarageScaffold(
             }
         },
         floatingActionButton = {
-            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                if (onFabSecondaryAction != null) {
-                    AnimatedVisibility(visible = menuOpen) {
-                        SmallFloatingActionButton(
-                            onClick = { menuOpen = false; onFabSecondaryAction() },
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        ) {
-                            Icon(Icons.Filled.Build, contentDescription = fabSecondaryLabel)
+            if (showFab) {
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                    if (onFabSecondaryAction != null) {
+                        AnimatedVisibility(visible = menuOpen) {
+                            SmallFloatingActionButton(
+                                onClick = { menuOpen = false; onFabSecondaryAction() },
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            ) {
+                                Icon(Icons.Filled.Build, contentDescription = fabSecondaryLabel)
+                            }
                         }
                     }
-                }
-                FloatingActionButton(
-                    onClick = {
-                        if (onFabSecondaryAction != null) menuOpen = !menuOpen else onFabAction()
+                    FloatingActionButton(
+                        onClick = {
+                            if (onFabSecondaryAction != null) menuOpen = !menuOpen else onFabAction()
+                        }
+                    ) {
+                        Icon(Icons.Filled.Add, contentDescription = "Add")
                     }
-                ) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add")
                 }
             }
         }

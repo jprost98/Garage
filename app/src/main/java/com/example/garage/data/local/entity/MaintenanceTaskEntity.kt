@@ -4,8 +4,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.garage.domain.model.MaintenanceTask
 import com.example.garage.domain.model.TaskType
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.PropertyName
 
 @Entity(tableName = "maintenance_tasks")
+@IgnoreExtraProperties
 data class MaintenanceTaskEntity(
     @PrimaryKey val id: String,
     val vehicleId: String,
@@ -20,8 +24,8 @@ data class MaintenanceTaskEntity(
     val dueOdometer: Int?,
     val completed: Boolean,
     val createdAt: Long,
-    val isSynced: Boolean = false,
-    val isDeleted: Boolean = false
+    @get:Exclude @set:Exclude var isSynced: Boolean = false,
+    @get:PropertyName("deleted") @set:PropertyName("deleted") var isDeleted: Boolean = false
 )
 
 fun MaintenanceTaskEntity.toDomain() = MaintenanceTask(

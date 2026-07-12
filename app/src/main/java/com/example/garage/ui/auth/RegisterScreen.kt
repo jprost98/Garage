@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -26,9 +27,8 @@ fun RegisterScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    if (state.isSignedIn) {
-        onRegistered()
-        return
+    LaunchedEffect(state.isSignedIn) {
+        if (state.isSignedIn) onRegistered()
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {

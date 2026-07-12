@@ -44,7 +44,11 @@ class ParseServiceEntryUseCase @Inject constructor() {
             ?.replace(",", "")
             ?.toIntOrNull()
 
-        val title = category?.label ?: input.trim().replaceFirstChar { it.uppercaseChar() }
+        // Always derive the title from what the user actually typed, not
+        // just the matched category - "Changed oil and rotated tires at
+        // 61,480" should keep that detail rather than collapsing to
+        // "Oil change".
+        val title = input.trim().replaceFirstChar { it.uppercaseChar() }
 
         return ParsedServiceEntry(category = category, odometer = odometer, title = title)
     }

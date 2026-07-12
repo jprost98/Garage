@@ -1,6 +1,7 @@
 package com.example.garage.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,14 +20,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.garage.domain.model.ServiceRecord
-import java.text.SimpleDateFormat
-import java.util.Date
+import com.example.garage.domain.model.Vehicle
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
 
 @Composable
-fun ServiceRecordRow(record: ServiceRecord, modifier: Modifier = Modifier) {
+fun ServiceRecordRow(
+    record: ServiceRecord,
+    modifier: Modifier = Modifier,
+    vehicle: Vehicle? = null,
+    onClick: () -> Unit = {}
+) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -46,7 +57,22 @@ fun ServiceRecordRow(record: ServiceRecord, modifier: Modifier = Modifier) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = record.title, style = MaterialTheme.typography.bodyMedium)
             Text(
-                text = "${dateFormatter.format(Date(record.date))} · ${record.odometer.formatMileage()} mi",
+                text = buildString {
+                    append(
+                        dateFormatter.format(
+                            Instant.ofEpochMilli(record.date)
+                                .atZone(ZoneId.of("UTC"))
+                                .toLocalDate()
+                        )
+                    )
+                    append(" · ")
+                    append(record.odometer.formatMileage())
+                    append(" mi")
+                    vehicle?.let {
+                        append(" · ")
+                        append(it.title)
+                    }
+                },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -57,6 +83,6 @@ fun ServiceRecordRow(record: ServiceRecord, modifier: Modifier = Modifier) {
     }
 }
 
-private val dateFormatter = SimpleDateFormat("MMM d", Locale.US)
+private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
 private fun Int.formatMileage(): String = "%,d".format(this)

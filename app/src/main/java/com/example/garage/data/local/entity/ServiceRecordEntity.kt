@@ -4,8 +4,12 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.garage.domain.model.ServiceCategory
 import com.example.garage.domain.model.ServiceRecord
+import com.google.firebase.firestore.Exclude
+import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.PropertyName
 
 @Entity(tableName = "service_records")
+@IgnoreExtraProperties
 data class ServiceRecordEntity(
     @PrimaryKey val id: String = "",
     val vehicleId: String = "",
@@ -17,8 +21,8 @@ data class ServiceRecordEntity(
     val date: Long = 0L,
     val receiptPhotoUrl: String? = null,
     val createdAt: Long = 0L,
-    val isSynced: Boolean = false,
-    val isDeleted: Boolean = false
+    @get:Exclude @set:Exclude var isSynced: Boolean = false,
+    @get:PropertyName("deleted") @set:PropertyName("deleted") var isDeleted: Boolean = false
 )
 
 fun ServiceRecordEntity.toDomain() = ServiceRecord(

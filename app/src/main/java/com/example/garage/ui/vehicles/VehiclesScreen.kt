@@ -2,9 +2,10 @@ package com.example.garage.ui.vehicles
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,55 +13,135 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.garage.ui.components.EmptyState
+import com.example.garage.ui.components.ServiceRecordRow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VehiclesScreen(
     modifier: Modifier = Modifier,
     onAddVehicle: () -> Unit,
     onVehicleClick: (String) -> Unit,
+    onRecordClick: (String) -> Unit,
     viewModel: VehiclesViewModel = hiltViewModel()
 ) {
     val vehicles by viewModel.vehicles.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
 
     Column(modifier = modifier.fillMaxSize()) {
-        Text(
-            text = "Vehicles",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 4.dp)
-        )
-
-        if (vehicles.isEmpty()) {
-            EmptyState(
-                title = "No vehicles yet",
-                message = "Add a vehicle to start logging its service history.",
-                actionLabel = "Add a vehicle",
-                onAction = onAddVehicle,
-                modifier = Modifier.fillMaxSize()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp, 8.dp, 16.dp, 0.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = viewModel::updateSearchQuery,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search records...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search)
             )
-            return@Column
         }
 
-        LazyColumn(
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(vehicles, key = { it.vehicle.id }) { item ->
-                VehicleCard(item = item, onClick = { onVehicleClick(item.vehicle.id) })
+        if (searchQuery.isNotEmpty()) {
+            if (searchResults.isEmpty()) {
+                EmptyState(
+                    title = "No matching records",
+                    message = "We couldn't find any service records matching \"$searchQuery\".",
+                    actionLabel = "Clear search",
+                    onAction = { viewModel.updateSearchQuery("") },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "Search Results",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    items(searchResults, key = { it.id }) { record ->
+                        val vehicle = vehicles.find { it.vehicle.id == record.vehicleId }?.vehicle
+                        ServiceRecordRow(
+                            record = record,
+                            vehicle = vehicle,
+                            onClick = { onRecordClick(record.id) }
+                        )
+                    }
+                }
+            }
+        } else {
+            if (vehicles.isEmpty()) {
+                EmptyState(
+                    title = "No vehicles yet",
+                    message = "Add a vehicle to start logging its service history.",
+                    actionLabel = "Add a vehicle",
+                    onAction = onAddVehicle,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    item {
+                        Text(
+                            text = "My Vehicles",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    items(vehicles, key = { it.vehicle.id }) { item ->
+                        VehicleCard(item = item, onClick = { onVehicleClick(item.vehicle.id) })
+                    }
+                }
             }
         }
     }
@@ -90,7 +171,7 @@ private fun VehicleCard(item: VehicleListItem, onClick: () -> Unit) {
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(text = item.vehicle.title, style = MaterialTheme.typography.bodyLarge)
                 val status = if (item.openTaskCount > 0) "${item.openTaskCount} tasks due" else "up to date"
                 Text(
@@ -98,6 +179,21 @@ private fun VehicleCard(item: VehicleListItem, onClick: () -> Unit) {
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            
+            if (item.recordCount > 0) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = item.recordCount.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "records",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
