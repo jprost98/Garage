@@ -143,30 +143,6 @@ fun MaintenanceScreen(
             }
         }
 
-        if (state.vehicles.size > 1) {
-            item {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        VehicleChip(
-                            label = "All",
-                            selected = state.selectedVehicleId == null,
-                            onClick = { viewModel.selectVehicle(null) }
-                        )
-                    }
-                    items(state.vehicles, key = { it.id }) { vehicle ->
-                        VehicleChip(
-                            label = vehicle.title,
-                            selected = state.selectedVehicleId == vehicle.id,
-                            onClick = { viewModel.selectVehicle(vehicle.id) }
-                        )
-                    }
-                }
-            }
-        }
-
         if (!tasksShown) {
             item {
                 Box(
