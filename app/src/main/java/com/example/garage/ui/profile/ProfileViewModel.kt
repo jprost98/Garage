@@ -3,7 +3,9 @@ package com.example.garage.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.garage.data.repository.AuthRepository
+import com.example.garage.data.repository.ServiceRecordRepository
 import com.example.garage.data.repository.UserRepository
+import com.example.garage.data.repository.VehicleRepository
 import com.example.garage.domain.model.GarageUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -23,7 +26,9 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val vehicleRepository: VehicleRepository,
+    private val serviceRecordRepository: ServiceRecordRepository
 ) : ViewModel() {
 
     val authState: StateFlow<GarageUser?> = authRepository.observeAuthState()
@@ -38,6 +43,14 @@ class ProfileViewModel @Inject constructor(
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), authRepository.currentUser)
+
+    val vehicleCount: StateFlow<Int> = vehicleRepository.observeVehicles()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val serviceRecordCount: StateFlow<Int> = serviceRecordRepository.observeAll()
+        .map { it.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     fun updateProfile(
         firstName: String,
@@ -55,7 +68,7 @@ class ProfileViewModel @Inject constructor(
                         // In a real app, show a "Re-authentication required" message
                     }
             }
-            
+
             val updatedUser = GarageUser(
                 uid = authUser.uid,
                 firstName = firstName,

@@ -13,7 +13,6 @@ import com.example.garage.data.repository.MaintenanceTaskRepository
 import com.example.garage.domain.model.MaintenanceTask
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import java.util.concurrent.TimeUnit
 
 private const val CHANNEL_ID = "maintenance_due"
 private const val CHANNEL_NAME = "Maintenance reminders"
@@ -28,32 +27,47 @@ private const val CHANNEL_NAME = "Maintenance reminders"
 class DueTaskWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val taskRepository: MaintenanceTaskRepository
+    private val taskRepository: MaintenanceTaskRepository,
+    private val vehicleRepository: com.example.garage.data.repository.VehicleRepository,
+    private val urgencyCalculator: com.example.garage.domain.usecase.TaskUrgencyCalculator
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         ensureChannel()
         val tasks = taskRepository.getActiveTasksOnce()
         val now = System.currentTimeMillis()
-        val sevenDaysMs = TimeUnit.DAYS.toMillis(7)
 
         tasks.forEach { task ->
-            val dueSoonByDate = task.dueDate?.let { it - now in 0..sevenDaysMs || it < now }
-            val dueSoonByMileage = task.dueOdometer != null // odometer comparison happens against the
-                // vehicle's current reading in the ViewModel layer for the UI list; the worker keeps
-                // this simple and only fires on date-based due tasks to avoid false positives offline.
-            if (dueSoonByDate == true) {
-                notify(task)
+            val vehicle = vehicleRepository.getVehicleById(task.vehicleId) ?: return@forEach
+            val urgency = urgencyCalculator.urgencyFor(task, vehicle.odometer, now)
+            
+            val urgencyLevelStr = when (urgency) {
+                is com.example.garage.domain.model.TaskUrgency.Overdue -> "OVERDUE"
+                is com.example.garage.domain.model.TaskUrgency.DueSoon -> "DUE_SOON"
+                else -> null
+            }
+            
+            if (urgencyLevelStr != null && urgencyLevelStr != task.lastNotifiedUrgencyLevel) {
+                notify(task, urgency)
+                taskRepository.addTask(task.copy(lastNotifiedUrgencyLevel = urgencyLevelStr))
+            } else if (urgencyLevelStr == null && task.lastNotifiedUrgencyLevel != null) {
+                // If it's no longer due/overdue (e.g., was completed), clear the notified state
+                taskRepository.addTask(task.copy(lastNotifiedUrgencyLevel = null))
             }
         }
         return Result.success()
     }
 
-    private fun notify(task: MaintenanceTask) {
+    private fun notify(task: MaintenanceTask, urgency: com.example.garage.domain.model.TaskUrgency) {
+        val message = when (urgency) {
+            is com.example.garage.domain.model.TaskUrgency.Overdue -> "Task is overdue!"
+            is com.example.garage.domain.model.TaskUrgency.DueSoon -> "Task is due soon."
+            else -> "Coming up on your vehicle"
+        }
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
             .setContentTitle(task.name)
-            .setContentText("Coming up on your vehicle")
+            .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .build()

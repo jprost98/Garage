@@ -1,64 +1,83 @@
-# Garage — 2.0
+# 🚗 Garage
 
-A ground-up rebuild of the original vehicle maintenance tracker, using
-Kotlin, Jetpack Compose, Hilt, Room, and Firestore. See the architecture
-notes below for why each piece is built the way it is.
+**Garage** is a modern, offline-first vehicle maintenance tracking app built for Android. It helps you manage your personal fleet by tracking vehicle service history, maintenance schedules, and calculating tasks that are due soon.
 
-## Status: Phase 1
+This project is a ground-up rebuild of an older app, leveraging the latest Android development practices and technologies: **Kotlin**, **Jetpack Compose**, **Hilt**, **Room**, and **Firebase**. 
 
-This is intentionally a **partial** app so far — a working prototype to
-build confidence in the architecture before investing in every screen.
+---
 
-**Built and working:**
-- Sign in / register / sign out (Firebase Auth)
-- Home dashboard: vehicle selector, due-soon tasks, recent activity
-- Offline-first data layer (Room + Firestore sync) for vehicles, service
-  records, and maintenance tasks
-- Bottom navigation shell (Home / Vehicles / Checkups / Profile)
-- Daily WorkManager check for due tasks (notification scaffolding)
+## 📱 Features & Status (Phase 1)
 
-**Stubbed for now** ("Coming soon" placeholder screens):
-- Vehicles tab (list view is actually already built in
-  `ui/vehicles/VehiclesScreen.kt` — just not wired into navigation yet)
-- Checkups/Maintenance tab
+This project is currently in **Phase 1**—a functioning prototype intended to demonstrate a scalable, offline-first architecture. 
 
-**Not started yet:**
-- Add Vehicle screen
-- Log a Service Record screen (including the natural-language "describe
-  it" field — the parsing logic already exists and is unit-testable at
-  `domain/usecase/ParseServiceEntryUseCase.kt`)
-- Add/edit Maintenance Task screen
-- Full Profile screen (theme toggle, app info, etc.)
+### 🔧 What's Built & Working
+* **Authentication**: Seamless Sign in / Register / Sign out powered by Firebase Auth.
+* **Home Dashboard**: View your vehicles, tasks due soon, and recent activity.
+* **Offline-First Sync**: Room acts as the single source of truth for the UI, with background synchronization to Firestore via a custom `SyncCoordinator`.
+* **AI Recommendations**: Leverages Firebase GenAI to smartly suggest maintenance tasks based on your vehicle's make and model.
+* **Navigation**: Single-activity architecture using Navigation-Compose with a Bottom Navigation Shell (Home / Vehicles / Checkups / Profile).
+* **Background Tasks**: Daily WorkManager checks for due maintenance tasks to trigger notifications.
+* **Vehicle Detail**: Archive/Delete vehicles, track odometer, and view AI-suggested maintenance tasks.
 
-Because there's no Add Vehicle screen yet, Home will show its empty state
-until you either build that screen or insert a test document directly in
-the Firestore console under `users/{your uid}/vehicles/{any-id}`.
+### 🚧 Coming Soon
+* **Add Vehicle Screen**: Adding vehicles currently requires manual Firestore document insertion (or UI completion in Phase 2).
+* **Log Service Record**: Natural language "describe it" parsing logic exists (`ParseServiceEntryUseCase.kt`), waiting to be wired to the UI.
+* **Maintenance & Profile Tabs**: Full functionality for managing upcoming checkups and custom user profiles.
 
-### Suggested phase plan
-1. ~~Login/Register + Home~~ ✅ (this phase)
+### 🗺️ Suggested Roadmap
+1. ~~Login/Register + Home~~ ✅ *(Current)*
 2. Vehicles tab + Add Vehicle screen
-3. Log Record screen (with the NL parser wired up) + record detail
+3. Log Record screen (with natural language parser) + record detail
 4. Maintenance tab + Add Task screen
-5. Real Profile screen, polish, tests
+5. Real Profile screen, Polish & UI Tests
 
-## Setup
+---
 
-1. Open the project root in Android Studio (Koala or newer recommended).
-2. Create a Firebase project, add an Android app with package name
-   `com.example.garage`, and download `google-services.json`.
-3. Replace `app/google-services.json.example` — save your real file as
-   `app/google-services.json` (this filename is gitignored/should not be
-   committed since it's tied to your Firebase project).
-4. In the Firebase console, enable **Authentication → Email/Password**
-   and create a **Firestore database** (start in test mode while
-   developing; lock down rules before sharing with family/friends — see
-   below).
-5. Sync Gradle and run. If Android Studio doesn't offer to generate the
-   Gradle wrapper jar automatically, run `gradle wrapper` once from the
-   project root, or just let Android Studio's "Sync Project" handle it.
+## 🏗️ Architecture & Tech Stack
 
-### Suggested Firestore security rules (tighten before real use)
-```
+This project strictly adheres to modern Android best practices:
+
+* **UI Framework**: **Jetpack Compose** + **Material 3** for fully declarative and reactive UI elements.
+* **State Management**: `StateFlow` and Hilt `ViewModel`s—no `LiveData`.
+* **Database & Offline-First Strategy**:
+  * **Room** is the single source of truth that UI components observe. 
+  * **Firestore** only talks to the repository layer. 
+  * Each entity features an `isSynced` and `isDeleted` flag, enabling instant offline writes that quietly sync to the cloud when online (`SyncCoordinator` handles this automatically per user).
+* **Dependency Injection**: **Hilt** (`di/` modules available for Room, Firebase, and process-lifetime `CoroutineScope`).
+* **Domain Layer**: Clean Kotlin models fully decoupled from both Room entities and Firestore documents. Contains unit-testable use-cases like `TaskUrgencyCalculator` and `ParseServiceEntryUseCase`.
+* **Background Processing**: **WorkManager** integrated with Hilt-Work (`notifications/`) for checking scheduled checkups.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+* Android Studio Koala (or newer)
+* A Firebase Project
+
+### Setup Instructions
+
+1. **Clone the Repository** and open the project root in Android Studio.
+2. **Configure Firebase**:
+   * Create a Firebase project.
+   * Add an Android app with the package name `com.example.garage` *(change this ID before publishing)*.
+   * Download `google-services.json`.
+3. **Add Google Services**: 
+   * Place your `google-services.json` inside the `app/` directory (replace `app/google-services.json.example`).
+   * *Note: `google-services.json` is `.gitignore`d.*
+4. **Enable Firebase Services**:
+   * **Authentication**: Enable **Email/Password** sign-in.
+   * **Firestore Database**: Create a database. Start in "Test Mode" for local development.
+   * **Firebase GenAI**: Enable for AI-driven task suggestions.
+5. **Build & Run**:
+   * Sync Gradle and run the app. Let Android Studio's "Sync Project" handle wrapper generation.
+
+---
+
+## 🔒 Recommended Firestore Security Rules
+Before sharing your app or moving to production, tighten your Firestore rules so users can only access their own data:
+
+```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -68,25 +87,3 @@ service cloud.firestore {
   }
 }
 ```
-
-## Architecture
-
-- **UI**: Jetpack Compose, Material3, single-Activity + Navigation-Compose.
-- **State**: `StateFlow` + Hilt `ViewModel`s, no `LiveData`.
-- **Data**: Room is the single source of truth the UI reads from.
-  Firestore only talks to the repository layer — see
-  `data/repository/*Repository.kt`. Each entity has an `isSynced` /
-  `isDeleted` flag so writes work instantly offline and get pushed to
-  Firestore in the background (`SyncCoordinator` wires this up per user,
-  started from `GarageApplication`).
-- **DI**: Hilt (`di/` modules for Room, Firebase, and a process-lifetime
-  `CoroutineScope`).
-- **Domain layer**: plain Kotlin models decoupled from both Room entities
-  and Firestore documents, plus small use-cases
-  (`TaskUrgencyCalculator`, `ParseServiceEntryUseCase`) that are easy to
-  unit test in isolation from Android.
-- **Notifications**: WorkManager + Hilt-Work (`notifications/`).
-
-## Package (application ID)
-`com.example.garage` — change this before publishing anywhere; it's a
-placeholder matching the original app's `com.example.myapp` convention.

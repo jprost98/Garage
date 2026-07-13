@@ -2,8 +2,10 @@ package com.example.garage.ui.archive
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.garage.data.repository.MaintenanceTaskRepository
 import com.example.garage.data.repository.ServiceRecordRepository
 import com.example.garage.data.repository.VehicleRepository
+import com.example.garage.domain.model.MaintenanceTask
 import com.example.garage.domain.model.ServiceRecord
 import com.example.garage.ui.vehicles.VehicleListItem
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,28 +19,32 @@ import javax.inject.Inject
 data class ArchiveUiState(
     val archivedVehicles: List<VehicleListItem> = emptyList(),
     val archivedRecords: List<ServiceRecord> = emptyList(),
+    val archivedTasks: List<MaintenanceTask> = emptyList(),
     val isLoading: Boolean = true
 )
 
 @HiltViewModel
 class ArchiveViewModel @Inject constructor(
     private val vehicleRepository: VehicleRepository,
-    private val serviceRecordRepository: ServiceRecordRepository
+    private val serviceRecordRepository: ServiceRecordRepository,
+    private val maintenanceTaskRepository: MaintenanceTaskRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<ArchiveUiState> = combine(
         vehicleRepository.observeVehicles(includeArchived = true),
-        serviceRecordRepository.observeAll(includeArchived = true)
-    ) { archivedVehicles, archivedRecords ->
+        serviceRecordRepository.observeAll(includeArchived = true),
+        maintenanceTaskRepository.observeAll(includeArchived = true)
+    ) { archivedVehicles, archivedRecords, archivedTasks ->
         ArchiveUiState(
             archivedVehicles = archivedVehicles.map { vehicle ->
                 VehicleListItem(
                     vehicle = vehicle,
-                    openTaskCount = 0, // Archived vehicles shouldn't have active tasks
+                    openTaskCount = archivedTasks.count { it.vehicleId == vehicle.id && !it.completed },
                     recordCount = archivedRecords.count { it.vehicleId == vehicle.id }
                 )
             },
             archivedRecords = archivedRecords,
+            archivedTasks = archivedTasks,
             isLoading = false
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ArchiveUiState())

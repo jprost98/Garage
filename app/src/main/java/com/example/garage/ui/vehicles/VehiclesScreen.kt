@@ -15,11 +15,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -51,6 +57,8 @@ fun VehiclesScreen(
     val vehicles by viewModel.vehicles.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val searchResults by viewModel.searchResults.collectAsState()
+    val currentSort by viewModel.sortOption.collectAsState()
+    var showSortMenu by remember { mutableStateOf(false) }
 
     Column(modifier = modifier.fillMaxSize()) {
         Row(
@@ -127,20 +135,65 @@ fun VehiclesScreen(
                 )
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
+                    contentPadding = PaddingValues(16.dp, 16.dp, 16.dp, 80.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item {
-                        Text(
-                            text = "My Vehicles",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "My Vehicles",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Box {
+                                IconButton(
+                                    onClick = { showSortMenu = true },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "Sort vehicles",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false }
+                                ) {
+                                    VehicleSortOption.entries.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { Text(option.label) },
+                                            onClick = {
+                                                viewModel.updateSortOption(option)
+                                                showSortMenu = false
+                                            },
+                                            trailingIcon = {
+                                                if (option == currentSort) {
+                                                    Text("✓", color = MaterialTheme.colorScheme.primary)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                     items(vehicles, key = { it.vehicle.id }) { item ->
                         VehicleCard(item = item, onClick = { onVehicleClick(item.vehicle.id) })
                     }
+                    /* item {
+                        EmptyState(
+                            title = "Need to add more?",
+                            message = "Tap to register a new vehicle to your garage.",
+                            actionLabel = "Add a vehicle",
+                            onAction = onAddVehicle
+                        )
+                    } */
                 }
             }
         }

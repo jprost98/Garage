@@ -3,7 +3,11 @@ package com.example.garage.ui.vehicles
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.garage.data.remote.MaintenanceAdvisor
+import com.example.garage.data.repository.MaintenanceTaskRepository
+import com.example.garage.data.repository.ServiceRecordRepository
 import com.example.garage.data.repository.VehicleRepository
+import com.example.garage.domain.model.MaintenanceTask
 import com.example.garage.domain.model.Vehicle
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +27,9 @@ data class AddVehicleUiState(
     val notes: String = "",
     val isArchived: Boolean = false,
     val isSaving: Boolean = false,
+    val isSuggesting: Boolean = false,
+    val suggestions: List<MaintenanceTask> = emptyList(),
+    val selectedSuggestionNames: Set<String> = emptySet(),
     val error: String? = null,
     val saved: Boolean = false
 )
@@ -30,7 +37,10 @@ data class AddVehicleUiState(
 @HiltViewModel
 class AddVehicleViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val vehicleRepository: VehicleRepository
+    private val vehicleRepository: VehicleRepository,
+    private val maintenanceTaskRepository: MaintenanceTaskRepository,
+    private val serviceRecordRepository: ServiceRecordRepository,
+    private val maintenanceAdvisor: MaintenanceAdvisor
 ) : ViewModel() {
 
     private val vehicleId: String? = savedStateHandle["vehicleId"]
@@ -68,6 +78,45 @@ class AddVehicleViewModel @Inject constructor(
     }
     fun onNotesChange(value: String) { _uiState.value = _uiState.value.copy(notes = value) }
 
+    fun suggestTasks() {
+        val state = _uiState.value
+        if (state.year.isBlank() || state.make.isBlank() || state.model.isBlank()) {
+            _uiState.value = state.copy(error = "Enter year, make, and model first")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = state.copy(isSuggesting = true, error = null)
+            
+            val existingTasks = vehicleId?.let { maintenanceTaskRepository.getTasksForVehicle(it) } ?: emptyList()
+            val recentRecords = vehicleId?.let { serviceRecordRepository.getRecordsForVehicle(it) } ?: emptyList()
+
+            val results = maintenanceAdvisor.suggestTasks(
+                year = state.year,
+                make = state.make,
+                modelName = state.model,
+                existingTasks = existingTasks,
+                recentRecords = recentRecords
+            )
+
+            _uiState.value = _uiState.value.copy(
+                isSuggesting = false,
+                suggestions = results.tasks,
+                selectedSuggestionNames = results.tasks.map { it.name }.toSet()
+            )
+        }
+    }
+
+    fun toggleSuggestion(task: MaintenanceTask) {
+        val current = _uiState.value.selectedSuggestionNames
+        val updated = if (current.contains(task.name)) {
+            current - task.name
+        } else {
+            current + task.name
+        }
+        _uiState.value = _uiState.value.copy(selectedSuggestionNames = updated)
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.year.isBlank() || state.make.isBlank() || state.model.isBlank()) {
@@ -78,7 +127,7 @@ class AddVehicleViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = state.copy(isSaving = true, error = null)
             runCatching {
-                vehicleRepository.addVehicle(
+                val vehicle = vehicleRepository.addVehicle(
                     Vehicle(
                         id = vehicleId ?: "",
                         year = state.year.trim(),
@@ -91,6 +140,13 @@ class AddVehicleViewModel @Inject constructor(
                         isArchived = state.isArchived
                     )
                 )
+
+                // Add selected suggestions
+                state.suggestions
+                    .filter { state.selectedSuggestionNames.contains(it.name) }
+                    .forEach { task ->
+                        maintenanceTaskRepository.addTask(task.copy(vehicleId = vehicle.id))
+                    }
             }.onSuccess {
                 _uiState.value = _uiState.value.copy(isSaving = false, saved = true)
             }.onFailure { e ->

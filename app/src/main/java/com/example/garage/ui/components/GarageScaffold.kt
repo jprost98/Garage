@@ -3,8 +3,10 @@ package com.example.garage.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -12,6 +14,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -50,6 +53,7 @@ fun GarageScaffold(
     showFab: Boolean = true,
     onFabSecondaryAction: (() -> Unit)? = null,
     fabSecondaryLabel: String? = null,
+    onAssistantClick: () -> Unit = {},
     content: @Composable (Modifier) -> Unit
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -68,8 +72,14 @@ fun GarageScaffold(
             }
         },
         floatingActionButton = {
-            if (showFab) {
-                Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+            Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
+                /* FloatingActionButton(
+                    onClick = onAssistantClick,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                ) {
+                    Icon(Icons.Filled.AutoAwesome, contentDescription = "Garage Assistant")
+                } */
+                if (showFab) {
                     if (onFabSecondaryAction != null) {
                         AnimatedVisibility(visible = menuOpen) {
                             SmallFloatingActionButton(
@@ -91,6 +101,6 @@ fun GarageScaffold(
             }
         }
     ) { padding ->
-        content(Modifier.padding(padding))
+        content(Modifier.padding(padding).statusBarsPadding())
     }
 }

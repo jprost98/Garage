@@ -25,7 +25,7 @@ import com.example.garage.data.local.entity.VehicleEntity
         MaintenanceTaskEntity::class,
         UserEntity::class
     ],
-    version = 3,
+    version = 6,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {

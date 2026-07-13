@@ -30,18 +30,28 @@ class VehiclesViewModel @Inject constructor(
 ) : ViewModel() {
 
     val searchQuery = MutableStateFlow("")
+    val sortOption = MutableStateFlow(VehicleSortOption.NAME_ASC)
 
     val vehicles: StateFlow<List<VehicleListItem>> = combine(
         vehicleRepository.observeVehicles(),
         taskRepository.observeAll(),
-        serviceRecordRepository.observeAll()
-    ) { vehicles, tasks, records ->
+        serviceRecordRepository.observeAll(),
+        sortOption
+    ) { vehicles, tasks, records, sort ->
         vehicles.map { vehicle ->
             VehicleListItem(
                 vehicle = vehicle,
                 openTaskCount = tasks.count { it.vehicleId == vehicle.id && !it.completed },
                 recordCount = records.count { it.vehicleId == vehicle.id }
             )
+        }.let { items ->
+            when (sort) {
+                VehicleSortOption.NAME_ASC -> items.sortedBy { it.vehicle.title }
+                VehicleSortOption.NAME_DESC -> items.sortedByDescending { it.vehicle.title }
+                VehicleSortOption.YEAR_DESC -> items.sortedByDescending { it.vehicle.year }
+                VehicleSortOption.YEAR_ASC -> items.sortedBy { it.vehicle.year }
+                VehicleSortOption.RECENTLY_ADDED -> items.sortedByDescending { it.vehicle.createdAt }
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -62,6 +72,10 @@ class VehiclesViewModel @Inject constructor(
 
     fun updateSearchQuery(query: String) {
         searchQuery.value = query
+    }
+
+    fun updateSortOption(option: VehicleSortOption) {
+        sortOption.value = option
     }
 
     fun deleteVehicle(id: String) {

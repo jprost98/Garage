@@ -25,6 +25,9 @@ interface ServiceRecordDao {
     @Query("SELECT * FROM service_records WHERE vehicleId = :vehicleId AND isDeleted = 0 ORDER BY date DESC")
     fun observeForVehicle(vehicleId: String): Flow<List<ServiceRecordEntity>>
 
+    @Query("SELECT * FROM service_records WHERE vehicleId = :vehicleId AND isDeleted = 0")
+    suspend fun getForVehicle(vehicleId: String): List<ServiceRecordEntity>
+
     @Query("SELECT * FROM service_records WHERE id = :id")
     fun observeById(id: String): Flow<ServiceRecordEntity?>
 

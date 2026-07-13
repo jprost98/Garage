@@ -1,7 +1,12 @@
 package com.example.garage.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -12,9 +17,12 @@ import androidx.navigation.navArgument
 import com.example.garage.ui.archive.ArchiveScreen
 import com.example.garage.ui.auth.LoginScreen
 import com.example.garage.ui.auth.RegisterScreen
-import com.example.garage.ui.components.ComingSoonScreen
+import com.example.garage.ui.components.GarageAssistantSheet
 import com.example.garage.ui.components.GarageScaffold
 import com.example.garage.ui.home.HomeScreen
+import com.example.garage.ui.maintenance.AddMaintenanceTaskScreen
+import com.example.garage.ui.maintenance.MaintenanceScreen
+import com.example.garage.ui.maintenance.TaskDetailScreen
 import com.example.garage.ui.profile.ProfileScreen
 import com.example.garage.ui.record.LogRecordScreen
 import com.example.garage.ui.record.RecordDetailScreen
@@ -23,15 +31,16 @@ import com.example.garage.ui.vehicles.VehicleDetailScreen
 import com.example.garage.ui.vehicles.VehiclesScreen
 
 /**
- * Phase 3: Vehicles, Add Vehicle, Vehicle Detail, Log Record, and Record
- * Detail are all wired up now. Maintenance/Add Task are still stubs -
- * that's next.
+ * Phase 3: Vehicles, Add Vehicle, Vehicle Detail, Log Record, Record
+ * Detail, and Checkups (Maintenance) are all wired up now. Add Task is
+ * still a stub - that's next.
  */
 @Composable
 fun GarageNavHost() {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
+    var showAssistant by remember { mutableStateOf(false) }
 
     fun navigateTopLevel(route: String) {
         navController.navigate(route) {
@@ -39,6 +48,10 @@ fun GarageNavHost() {
             launchSingleTop = true
             restoreState = true
         }
+    }
+
+    if (showAssistant) {
+        GarageAssistantSheet(onDismiss = { showAssistant = false })
     }
 
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
@@ -62,13 +75,15 @@ fun GarageNavHost() {
                 currentRoute = Routes.HOME,
                 onNavigate = ::navigateTopLevel,
                 onFabAction = { },
-                showFab = false
+                showFab = false,
+                onAssistantClick = { showAssistant = true }
             ) { contentModifier ->
                 HomeScreen(
                     modifier = contentModifier,
-                    onTaskClick = { navigateTopLevel(Routes.MAINTENANCE) },
+                    onTaskClick = { taskId -> navController.navigate(Routes.taskDetail(taskId)) },
                     onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) },
-                    onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) }
+                    onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
+                    onLogRecord = { vehicleId, scan -> navController.navigate(Routes.logRecord(vehicleId, scan = scan)) }
                 )
             }
         }
@@ -77,7 +92,9 @@ fun GarageNavHost() {
             GarageScaffold(
                 currentRoute = Routes.VEHICLES,
                 onNavigate = ::navigateTopLevel,
-                onFabAction = { navController.navigate(Routes.ADD_VEHICLE) }
+                onFabAction = { navController.navigate(Routes.ADD_VEHICLE) },
+                showFab = true,
+                onAssistantClick = { showAssistant = true }
             ) { contentModifier ->
                 VehiclesScreen(
                     modifier = contentModifier,
@@ -114,10 +131,26 @@ fun GarageNavHost() {
             route = Routes.LOG_RECORD,
             arguments = listOf(
                 navArgument("vehicleId") { type = NavType.StringType },
-                navArgument("recordId") { type = NavType.StringType; nullable = true }
+                navArgument("recordId") { type = NavType.StringType; nullable = true },
+                navArgument("scan") { type = NavType.BoolType; defaultValue = false }
+            )
+        ) { backStackEntry ->
+            val scan = backStackEntry.arguments?.getBoolean("scan") ?: false
+            LogRecordScreen(
+                onClose = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() },
+                startScan = scan
+            )
+        }
+
+        composable(
+            route = Routes.ADD_TASK,
+            arguments = listOf(
+                navArgument("vehicleId") { type = NavType.StringType },
+                navArgument("taskId") { type = NavType.StringType; nullable = true }
             )
         ) {
-            LogRecordScreen(
+            AddMaintenanceTaskScreen(
                 onClose = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() }
             )
@@ -133,13 +166,39 @@ fun GarageNavHost() {
             )
         }
 
+        composable(
+            route = Routes.TASK_DETAIL,
+            arguments = listOf(navArgument("taskId") { type = NavType.StringType })
+        ) {
+            TaskDetailScreen(
+                onBack = { navController.popBackStack() },
+                onEdit = { vehicleId, taskId -> navController.navigate(Routes.addTask(vehicleId, taskId)) }
+            )
+        }
+
         composable(Routes.MAINTENANCE) {
+            val viewModel: com.example.garage.ui.maintenance.MaintenanceViewModel = hiltViewModel()
+            val state by viewModel.uiState.collectAsState()
+
             GarageScaffold(
                 currentRoute = Routes.MAINTENANCE,
                 onNavigate = ::navigateTopLevel,
-                onFabAction = { }
+                onFabAction = {
+                    state.selectedVehicleId?.let { vId ->
+                        navController.navigate(Routes.addTask(vId))
+                    } ?: state.vehicles.firstOrNull()?.id?.let { vId ->
+                        navController.navigate(Routes.addTask(vId))
+                    }
+                },
+                showFab = state.hasVehicles,
+                onAssistantClick = { showAssistant = true }
             ) { contentModifier ->
-                ComingSoonScreen(title = "Maintenance", modifier = contentModifier)
+                MaintenanceScreen(
+                    modifier = contentModifier,
+                    onTaskClick = { vId, tId -> navController.navigate(Routes.taskDetail(tId)) },
+                    onAddVehicle = { navController.navigate(Routes.ADD_VEHICLE) },
+                    viewModel = viewModel
+                )
             }
         }
 
@@ -147,7 +206,9 @@ fun GarageNavHost() {
             GarageScaffold(
                 currentRoute = Routes.PROFILE,
                 onNavigate = ::navigateTopLevel,
-                onFabAction = { }
+                onFabAction = { },
+                showFab = false,
+                onAssistantClick = { showAssistant = true }
             ) { contentModifier ->
                 ProfileScreen(
                     modifier = contentModifier,
@@ -161,7 +222,8 @@ fun GarageNavHost() {
             ArchiveScreen(
                 onBack = { navController.popBackStack() },
                 onVehicleClick = { vehicleId -> navController.navigate(Routes.vehicleDetail(vehicleId)) },
-                onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) }
+                onRecordClick = { recordId -> navController.navigate(Routes.recordDetail(recordId)) },
+                onTaskClick = { taskId -> navController.navigate(Routes.taskDetail(taskId)) }
             )
         }
     }

@@ -32,11 +32,24 @@ class MaintenanceTaskRepository @Inject constructor(
         }
     }
 
-    fun observeAll(): Flow<List<MaintenanceTask>> =
-        dao.observeAll().map { list -> list.map { it.toDomain() } }
+    fun observeAll(includeArchived: Boolean = false): Flow<List<MaintenanceTask>> =
+        if (includeArchived) {
+            dao.observeArchived().map { list -> list.map { it.toDomain() } }
+        } else {
+            dao.observeAll().map { list -> list.map { it.toDomain() } }
+        }
 
     fun observeForVehicle(vehicleId: String): Flow<List<MaintenanceTask>> =
         dao.observeForVehicle(vehicleId).map { list -> list.map { it.toDomain() } }
+
+    suspend fun getTasksForVehicle(vehicleId: String): List<MaintenanceTask> =
+        dao.getForVehicle(vehicleId).map { it.toDomain() }
+
+    suspend fun getTaskById(id: String): MaintenanceTask? =
+        dao.getById(id)?.toDomain()
+
+    suspend fun getTaskByAssociatedRecordId(recordId: String): MaintenanceTask? =
+        dao.getByAssociatedRecordId(recordId)?.toDomain()
 
     suspend fun addTask(task: MaintenanceTask): MaintenanceTask {
         val withId = if (task.id.isBlank()) task.copy(id = UUID.randomUUID().toString()) else task
@@ -45,8 +58,8 @@ class MaintenanceTaskRepository @Inject constructor(
         return withId
     }
 
-    suspend fun setCompleted(id: String, completed: Boolean) {
-        dao.setCompleted(id, completed)
+    suspend fun setCompleted(id: String, completed: Boolean, recordId: String? = null) {
+        dao.setCompleted(id, completed, recordId)
         tryPush()
     }
 

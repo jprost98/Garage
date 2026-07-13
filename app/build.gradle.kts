@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.google.services)
     alias(libs.plugins.room)
+    alias(libs.plugins.kotlin.serialization)
     id("kotlin-parcelize")
 }
 
@@ -88,6 +89,8 @@ dependencies {
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.ai)
     implementation(libs.firebase.appcheck.debug)
+    implementation("com.google.firebase:firebase-config")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 
     implementation(libs.coil.compose)
     implementation(libs.work.runtime.ktx)

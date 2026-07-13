@@ -9,14 +9,18 @@ data class MaintenanceTask(
     val vehicleId: String,
     val name: String,
     val type: TaskType,
+    val category: ServiceCategory = ServiceCategory.OTHER,
     val notes: String? = null,
     val intervalMiles: Int? = null,
     val intervalMonths: Int? = null,
+    val startingOdometer: Int? = null,
     val lastDoneDate: Long? = null,
     val lastDoneOdometer: Int? = null,
     val dueDate: Long? = null,
     val dueOdometer: Int? = null,
     val completed: Boolean = false,
+    val associatedRecordId: String? = null,
+    val lastNotifiedUrgencyLevel: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
 

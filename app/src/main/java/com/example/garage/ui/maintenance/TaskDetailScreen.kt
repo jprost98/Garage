@@ -1,6 +1,5 @@
-package com.example.garage.ui.record
+package com.example.garage.ui.maintenance
 
-import androidx.core.net.toUri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,24 +11,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Opacity
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -58,9 +60,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.garage.domain.model.MaintenanceTask
 import com.example.garage.domain.model.ServiceCategory
-import com.example.garage.domain.model.ServiceRecord
+import com.example.garage.domain.model.TaskUrgency
 import com.example.garage.ui.components.StatCard
+import com.example.garage.ui.components.TaskUrgencyBadge
 import com.example.garage.ui.theme.DangerContainer
 import com.example.garage.ui.theme.DangerOnContainer
 import com.example.garage.ui.theme.TealContainer
@@ -75,13 +79,14 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecordDetailScreen(
+fun TaskDetailScreen(
     onBack: () -> Unit,
-    onEdit: (vehicleId: String, recordId: String) -> Unit,
+    onEdit: (vehicleId: String, taskId: String) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: RecordDetailViewModel = hiltViewModel()
+    viewModel: TaskDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.deleted) {
         if (state.deleted) onBack()
@@ -92,19 +97,19 @@ fun RecordDetailScreen(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text("Service record") },
+                title = { Text("Maintenance task") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    state.record?.let { record ->
-                        IconButton(onClick = { onEdit(record.vehicleId, record.id) }) {
+                    state.task?.let { task ->
+                        IconButton(onClick = { onEdit(task.vehicleId, task.id) }) {
                             Icon(Icons.Filled.Edit, contentDescription = "Edit")
                         }
                     }
-                    IconButton(onClick = viewModel::onDeleteClick) {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(
                             Icons.Filled.DeleteOutline,
                             contentDescription = "Delete",
@@ -118,85 +123,49 @@ fun RecordDetailScreen(
             )
         }
     ) { padding ->
-        val record = state.record
+        val task = state.task
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
-                record != null -> {
-                    RecordDetailContent(
-                        record = record,
-                        onDeleteReceiptClick = viewModel::onDeleteReceiptClick
+                task != null -> {
+                    TaskDetailContent(
+                        task = task,
+                        urgency = state.urgency,
+                        onToggleComplete = viewModel::toggleComplete
                     )
                 }
             }
         }
     }
 
-    if (state.showDeleteConfirmation) {
+    if (showDeleteConfirm) {
         AlertDialog(
-            onDismissRequest = viewModel::cancelDelete,
-            title = { Text("Delete this record?") },
-            text = {
-                Column {
-                    Text("This can't be undone.")
-                    if (state.linkedTask != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "This record is linked to the '${state.linkedTask?.name}' task. Should we also mark that task as incomplete?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            },
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete this task?") },
+            text = { Text("This can't be undone.") },
             confirmButton = {
-                TextButton(onClick = { viewModel.confirmDelete(uncompleteTask = false) }) {
-                    Text(if (state.linkedTask != null) "Delete Record Only" else "Delete", color = MaterialTheme.colorScheme.error)
-                }
+                TextButton(onClick = {
+                    showDeleteConfirm = false
+                    viewModel.delete()
+                }) { Text("Delete") }
             },
             dismissButton = {
-                Row {
-                    TextButton(onClick = viewModel::cancelDelete) {
-                        Text("Cancel")
-                    }
-                    if (state.linkedTask != null) {
-                        TextButton(onClick = { viewModel.confirmDelete(uncompleteTask = true) }) {
-                            Text("Delete & Reset Task", color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            }
-        )
-    }
-
-    if (state.showDeleteReceiptConfirmation) {
-        AlertDialog(
-            onDismissRequest = viewModel::cancelDeleteReceipt,
-            title = { Text("Delete receipt?") },
-            text = { Text("The receipt photo will be removed from this record.") },
-            confirmButton = {
-                TextButton(onClick = viewModel::confirmDeleteReceipt) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = viewModel::cancelDeleteReceipt) {
-                    Text("Cancel")
-                }
+                OutlinedButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
             }
         )
     }
 }
 
 @Composable
-private fun RecordDetailContent(
-    record: ServiceRecord,
-    onDeleteReceiptClick: () -> Unit,
+private fun TaskDetailContent(
+    task: MaintenanceTask,
+    urgency: TaskUrgency,
+    onToggleComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val style = categoryStyle(record.category)
+    val style = categoryStyle(task.category)
 
     Column(
         modifier = modifier
@@ -205,74 +174,90 @@ private fun RecordDetailContent(
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Hero card - color-coded by service category, mirrors the tonal
-        // treatment used for status badges elsewhere in the app.
         Card(
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = style.container),
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(style.onContainer.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = style.icon,
-                        contentDescription = null,
-                        tint = style.onContainer,
-                        modifier = Modifier.size(26.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(style.onContainer.copy(alpha = 0.12f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = style.icon,
+                            contentDescription = null,
+                            tint = style.onContainer,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                    TaskUrgencyBadge(urgency = urgency)
                 }
                 Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = record.title,
+                    text = task.name,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = style.onContainer
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = record.category.label.uppercase(Locale.US),
+                    text = task.category.label.uppercase(Locale.US),
                     style = MaterialTheme.typography.labelSmall,
                     color = style.onContainer.copy(alpha = 0.7f)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = dateFormatter.format(
-                        Instant.ofEpochMilli(record.date)
-                            .atZone(ZoneId.of("UTC"))
-                            .toLocalDate()
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Button(
+                    onClick = onToggleComplete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (task.completed) style.onContainer else style.onContainer.copy(alpha = 0.1f),
+                        contentColor = if (task.completed) style.container else style.onContainer
                     ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = style.onContainer.copy(alpha = 0.85f)
-                )
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (task.completed) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (task.completed) "Completed" else "Mark as done")
+                }
             }
         }
 
-        // Odometer + cost, side by side.
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
+            val frequency = frequencyLabel(task)
             StatCard(
-                label = "Odometer",
-                value = "${"%,d".format(record.odometer)} mi",
-                icon = Icons.Filled.Speed,
+                label = "Frequency",
+                value = frequency,
+                icon = Icons.Filled.Build,
                 modifier = Modifier.weight(1f)
             )
+            
+            val due = dueLabel(task)
             StatCard(
-                label = "Cost",
-                value = record.cost?.let { "$${"%,.2f".format(it)}" } ?: "—",
-                icon = Icons.Filled.AttachMoney,
+                label = "Next due",
+                value = due,
+                icon = Icons.Filled.Warning,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        record.description?.takeIf { it.isNotBlank() }?.let { notes ->
+        task.notes?.takeIf { it.isNotBlank() }?.let { notes ->
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -291,51 +276,23 @@ private fun RecordDetailContent(
                 }
             }
         }
-
-        record.receiptPhotoUrl?.let { url ->
-            val context = androidx.compose.ui.platform.LocalContext.current
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Receipt",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, url.toUri())
-                                context.startActivity(intent)
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("View Receipt")
-                        }
-                        IconButton(
-                            onClick = onDeleteReceiptClick
-                        ) {
-                            Icon(
-                                Icons.Filled.DeleteOutline,
-                                contentDescription = "Delete Receipt",
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
+}
+
+private fun frequencyLabel(task: MaintenanceTask): String {
+    val parts = mutableListOf<String>()
+    task.intervalMiles?.let { parts.add("${it} mi") }
+    task.intervalMonths?.let { parts.add("$it mo") }
+    return if (parts.isEmpty()) "Once" else parts.joinToString(" / ")
+}
+
+private fun dueLabel(task: MaintenanceTask): String {
+    val parts = mutableListOf<String>()
+    task.dueOdometer?.let { parts.add("${"%,d".format(it)} mi") }
+    task.dueDate?.let {
+        parts.add(dateFormatter.format(Instant.ofEpochMilli(it).atZone(ZoneId.of("UTC")).toLocalDate()))
+    }
+    return if (parts.isEmpty()) "—" else parts.joinToString("\n")
 }
 
 private data class CategoryStyle(val icon: ImageVector, val container: Color, val onContainer: Color)
@@ -345,7 +302,7 @@ private fun categoryStyle(category: ServiceCategory): CategoryStyle = when (cate
     ServiceCategory.OIL_CHANGE -> CategoryStyle(Icons.Filled.Opacity, TealContainer, TealOnContainer)
     ServiceCategory.FLUIDS -> CategoryStyle(Icons.Filled.WaterDrop, TealContainer, TealOnContainer)
     ServiceCategory.TIRES -> CategoryStyle(Icons.Filled.TripOrigin, WarningContainer, WarningOnContainer)
-    ServiceCategory.INSPECTION -> CategoryStyle(Icons.Filled.FactCheck, WarningContainer, WarningOnContainer)
+    ServiceCategory.INSPECTION -> CategoryStyle(Icons.AutoMirrored.Filled.FactCheck, WarningContainer, WarningOnContainer)
     ServiceCategory.BRAKES -> CategoryStyle(Icons.Filled.Warning, DangerContainer, DangerOnContainer)
     ServiceCategory.BATTERY -> CategoryStyle(Icons.Filled.BatteryChargingFull, DangerContainer, DangerOnContainer)
     ServiceCategory.OTHER -> CategoryStyle(
@@ -355,4 +312,4 @@ private fun categoryStyle(category: ServiceCategory): CategoryStyle = when (cate
     )
 }
 
-private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
+private val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)

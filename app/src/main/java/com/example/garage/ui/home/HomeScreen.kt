@@ -1,7 +1,6 @@
 package com.example.garage.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,28 +15,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.MiscellaneousServices
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -54,9 +55,22 @@ fun HomeScreen(
     onTaskClick: (String) -> Unit,
     onRecordClick: (String) -> Unit,
     onAddVehicle: () -> Unit,
+    onLogRecord: (String, Boolean) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    var showVehiclePickerForLog by remember { mutableStateOf(false) }
+
+    if (showVehiclePickerForLog) {
+        VehicleSelectionDialog(
+            vehicles = state.vehicles,
+            onVehicleSelected = { vehicleId ->
+                showVehiclePickerForLog = false
+                onLogRecord(vehicleId, false)
+            },
+            onDismiss = { showVehiclePickerForLog = false }
+        )
+    }
 
     if (!state.isLoading && !state.hasVehicles) {
         EmptyState(
@@ -76,6 +90,18 @@ fun HomeScreen(
     ) {
         item {
             GreetingSection(greeting = state.greeting, userName = state.userName)
+        }
+
+        item {
+            QuickActionsSection(
+                onAddRecord = {
+                    if (state.vehicles.size == 1) {
+                        onLogRecord(state.vehicles.first().id, false)
+                    } else {
+                        showVehiclePickerForLog = true
+                    }
+                }
+            )
         }
 
         // Only shown once there's more than one vehicle to give an overview of.
@@ -101,23 +127,6 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    StatCard(
-                        label = "Total records",
-                        value = "${state.totalRecords}",
-                        icon = Icons.Filled.MiscellaneousServices,
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatCard(
-                        label = "Active vehicles",
-                        value = "${state.vehicles.size}",
-                        icon = Icons.Filled.DirectionsCar,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
             }
         }
 
@@ -131,17 +140,17 @@ fun HomeScreen(
         }
 
         item {
-            RecentServiceSection(
-                records = state.recentRecords,
-                vehicles = state.vehicles,
-                onRecordClick = onRecordClick
+            UpcomingRemindersSection(
+                reminders = state.upcomingReminders,
+                onTaskClick = onTaskClick
             )
         }
 
         item {
-            UpcomingRemindersSection(
-                reminders = state.upcomingReminders,
-                onTaskClick = onTaskClick
+            RecentServiceSection(
+                records = state.recentRecords,
+                vehicles = state.vehicles,
+                onRecordClick = onRecordClick
             )
         }
     }
@@ -156,6 +165,100 @@ private fun GreetingSection(greeting: String, userName: String?) {
             fontWeight = FontWeight.Bold
         )
     }
+}
+
+@Composable
+private fun QuickActionsSection(
+    onAddRecord: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        QuickActionButton(
+            label = "Log Service",
+            icon = Icons.Filled.Add,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            onClick = onAddRecord,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun QuickActionButton(
+    label: String,
+    icon: ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+private fun VehicleSelectionDialog(
+    vehicles: List<Vehicle>,
+    onVehicleSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Vehicle") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                vehicles.forEach { vehicle ->
+                    Card(
+                        onClick = { onVehicleSelected(vehicle.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Text(
+                            text = vehicle.displayName,
+                            modifier = Modifier.padding(16.dp),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
@@ -287,7 +390,7 @@ private fun TaskListItem(
             task = item.task,
             urgency = item.urgency,
             onToggleComplete = { },
-            onClick = { onTaskClick(item.task.vehicleId) }
+            onClick = { onTaskClick(item.task.id) }
         )
     }
 }

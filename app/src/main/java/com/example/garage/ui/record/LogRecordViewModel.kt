@@ -1,5 +1,6 @@
 package com.example.garage.ui.record
 
+import android.graphics.Bitmap
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -27,8 +28,10 @@ data class LogRecordUiState(
     val description: String = "",
     val date: Long = LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
     val isSaving: Boolean = false,
+    val isScanning: Boolean = false,
     val error: String? = null,
-    val saved: Boolean = false
+    val saved: Boolean = false,
+    val receiptPhotoUrl: String? = null
 )
 
 @HiltViewModel
@@ -56,7 +59,8 @@ class LogRecordViewModel @Inject constructor(
                         odometer = record.odometer.toString(),
                         cost = record.cost?.toString() ?: "",
                         description = record.description ?: "",
-                        date = record.date
+                        date = record.date,
+                        receiptPhotoUrl = record.receiptPhotoUrl
                     )
                 }
             }
@@ -96,6 +100,30 @@ class LogRecordViewModel @Inject constructor(
 
     fun onDateChange(value: Long) { _uiState.value = _uiState.value.copy(date = value) }
 
+    fun uploadReceipt(bitmap: Bitmap) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isScanning = true, error = null)
+            
+            runCatching {
+                serviceRecordRepository.uploadReceipt(bitmap)
+            }.onSuccess { photoUrl ->
+                _uiState.value = _uiState.value.copy(
+                    isScanning = false,
+                    receiptPhotoUrl = photoUrl
+                )
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    isScanning = false,
+                    error = "Upload failed: ${e.message}"
+                )
+            }
+        }
+    }
+
+    fun deleteReceipt() {
+        _uiState.value = _uiState.value.copy(receiptPhotoUrl = null)
+    }
+
     fun save() {
         val state = _uiState.value
         if (state.title.isBlank()) {
@@ -118,7 +146,8 @@ class LogRecordViewModel @Inject constructor(
                     description = state.description.trim().ifBlank { null },
                     odometer = state.odometer.toIntOrNull() ?: 0,
                     cost = state.cost.toDoubleOrNull(),
-                    date = state.date
+                    date = state.date,
+                    receiptPhotoUrl = state.receiptPhotoUrl
                 )
                 serviceRecordRepository.addRecord(record)
 
