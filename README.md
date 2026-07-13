@@ -22,7 +22,7 @@ This project is currently in **Phase 1**—a functioning prototype intended to d
 ### 🚧 Coming Soon
 * **Add Vehicle Screen**: Adding vehicles currently requires manual Firestore document insertion (or UI completion in Phase 2).
 * **Log Service Record**: Natural language "describe it" parsing logic exists (`ParseServiceEntryUseCase.kt`), waiting to be wired to the UI.
-* **Maintenance & Profile Tabs**: Full functionality for managing upcoming checkups and custom user profiles.
+* **Maintenance & Profile Tabs**: Profile tab UI is now integrated with the app version display, while full maintenance features remain for future development.
 
 ### 🗺️ Suggested Roadmap
 1. ~~Login/Register + Home~~ ✅ *(Current)*
