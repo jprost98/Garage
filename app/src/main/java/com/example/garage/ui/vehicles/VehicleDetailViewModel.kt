@@ -100,6 +100,7 @@ class VehicleDetailViewModel @Inject constructor(
                 year = vehicle.year,
                 make = vehicle.make,
                 modelName = vehicle.model,
+                odometer = vehicle.odometer,
                 existingTasks = existingTasks,
                 recentRecords = recentRecords
             )

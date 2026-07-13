@@ -95,6 +95,7 @@ class AddVehicleViewModel @Inject constructor(
                 year = state.year,
                 make = state.make,
                 modelName = state.model,
+                odometer = state.odometer.toIntOrNull() ?: 0,
                 existingTasks = existingTasks,
                 recentRecords = recentRecords
             )

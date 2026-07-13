@@ -64,7 +64,11 @@ fun GarageScaffold(
                 bottomDestinations.forEach { dest ->
                     NavigationBarItem(
                         selected = currentRoute == dest.route,
-                        onClick = { onNavigate(dest.route) },
+                        onClick = {
+                            if (currentRoute != dest.route) {
+                                onNavigate(dest.route)
+                            }
+                        },
                         icon = { Icon(dest.icon, contentDescription = dest.label) },
                         label = { Text(dest.label) }
                     )

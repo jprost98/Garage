@@ -23,6 +23,7 @@ class MaintenanceAdvisor @Inject constructor(
         year: String,
         make: String,
         modelName: String,
+        odometer: Int = 0,
         existingTasks: List<MaintenanceTask> = emptyList(),
         recentRecords: List<ServiceRecord> = emptyList()
     ): SuggestionResult = withContext(Dispatchers.IO) {
@@ -54,7 +55,7 @@ class MaintenanceAdvisor @Inject constructor(
             {{role "user"}}
             Analyze the following vehicle information. Please provide a summary of the vehicle, some data analytics over its service history, and your recommendations on maintenance schedules (that are not already present) in the explanation field. Then, generate a list of recommended maintenance tasks for the vehicle.
             Vehicle: $year $make $modelName
-            Current Odometer: ${recentRecords.maxOfOrNull { it.odometer } ?: 0}
+            Current Odometer: ${if (odometer > 0) odometer else (recentRecords.maxOfOrNull { it.odometer } ?: 0)}
             Existing tasks for this vehicle: $existingTaskNames
             Recent service history: $recentServiceSummary
         """.trimIndent()

@@ -6,10 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.garage.data.repository.ServiceRecordRepository
 import com.example.garage.data.repository.VehicleRepository
+import com.example.garage.domain.model.ReceiptExtraction
 import com.example.garage.domain.model.ServiceCategory
 import com.example.garage.domain.model.ServiceRecord
 import com.example.garage.domain.usecase.ParseServiceEntryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -104,17 +106,38 @@ class LogRecordViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isScanning = true, error = null)
             
-            runCatching {
-                serviceRecordRepository.uploadReceipt(bitmap)
-            }.onSuccess { photoUrl ->
-                _uiState.value = _uiState.value.copy(
+            try {
+                val photoUrlDeferred = async {
+                    runCatching {
+                        serviceRecordRepository.uploadReceipt(bitmap)
+                    }.getOrNull()
+                }
+                
+                val extractionDeferred = async {
+                    runCatching {
+                        serviceRecordRepository.extractReceiptData(bitmap)
+                    }.getOrNull()
+                }
+
+                val photoUrl = photoUrlDeferred.await()
+                val extraction = extractionDeferred.await()
+
+                val currentState = _uiState.value
+                _uiState.value = currentState.copy(
                     isScanning = false,
-                    receiptPhotoUrl = photoUrl
+                    receiptPhotoUrl = photoUrl ?: currentState.receiptPhotoUrl,
+                    title = extraction?.title ?: currentState.title,
+                    category = extraction?.category ?: currentState.category,
+                    date = extraction?.date ?: currentState.date,
+                    odometer = extraction?.odometer?.toString() ?: currentState.odometer,
+                    cost = extraction?.cost?.toString() ?: currentState.cost,
+                    description = extraction?.description ?: currentState.description,
+                    error = if (photoUrl == null) "Upload failed, but receipt was successfully scanned." else null
                 )
-            }.onFailure { e ->
+            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     isScanning = false,
-                    error = "Upload failed: ${e.message}"
+                    error = "Failed to scan receipt: ${e.message}"
                 )
             }
         }

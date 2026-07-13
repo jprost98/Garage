@@ -36,6 +36,7 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,7 +83,17 @@ fun MaintenanceScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    if (!state.isLoading && !state.hasVehicles) {
+    if (state.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (!state.hasVehicles) {
         EmptyState(
             title = "No vehicles yet",
             message = "Add a vehicle to start tracking its checkups.",
@@ -93,7 +104,7 @@ fun MaintenanceScreen(
         return
     }
 
-    if (!state.isLoading && !state.hasAnyTasks) {
+    if (!state.hasAnyTasks) {
         EmptyState(
             title = "No maintenance tasks yet",
             message = "Tasks you add for your vehicles will show up here, grouped by how soon they're due.",

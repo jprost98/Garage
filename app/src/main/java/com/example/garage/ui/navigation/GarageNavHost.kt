@@ -1,5 +1,8 @@
 package com.example.garage.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -17,6 +20,7 @@ import androidx.navigation.navArgument
 import com.example.garage.ui.archive.ArchiveScreen
 import com.example.garage.ui.auth.LoginScreen
 import com.example.garage.ui.auth.RegisterScreen
+import com.example.garage.ui.auth.SplashScreen
 import com.example.garage.ui.components.GarageAssistantSheet
 import com.example.garage.ui.components.GarageScaffold
 import com.example.garage.ui.home.HomeScreen
@@ -54,7 +58,29 @@ fun GarageNavHost() {
         GarageAssistantSheet(onDismiss = { showAssistant = false })
     }
 
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    NavHost(
+        navController = navController,
+        startDestination = Routes.SPLASH,
+        enterTransition = { fadeIn(animationSpec = tween(450)) },
+        exitTransition = { fadeOut(animationSpec = tween(450)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(450)) },
+        popExitTransition = { fadeOut(animationSpec = tween(450)) }
+    ) {
+
+        composable(Routes.SPLASH) {
+            SplashScreen(
+                onNavigateToHome = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+            )
+        }
 
         composable(Routes.LOGIN) {
             LoginScreen(

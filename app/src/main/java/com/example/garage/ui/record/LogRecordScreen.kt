@@ -36,8 +36,10 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Receipt
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.compose.material3.Button
@@ -173,7 +175,9 @@ fun LogRecordScreen(
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(4.dp, 4.dp, 16.dp, 4.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp, 4.dp, 16.dp, 4.dp)
         ) {
             IconButton(onClick = onClose) {
                 Icon(Icons.Filled.Close, contentDescription = "Close")
@@ -182,6 +186,52 @@ fun LogRecordScreen(
                 text = if (state.isEdit) "Edit service record" else "Log a service",
                 style = MaterialTheme.typography.titleMedium
             )
+            if (!state.isEdit) {
+                Spacer(modifier = Modifier.weight(1f))
+                Box {
+                    var showTopMenu by remember { mutableStateOf(false) }
+                    IconButton(onClick = { showTopMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Filled.Receipt,
+                            contentDescription = "Scan Receipt",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showTopMenu,
+                        onDismissRequest = { showTopMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Take Photo") },
+                            leadingIcon = { Icon(Icons.Filled.AddAPhoto, contentDescription = null) },
+                            onClick = {
+                                showTopMenu = false
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    cameraLauncher.launch(null)
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Upload Image") },
+                            leadingIcon = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
+                            onClick = {
+                                showTopMenu = false
+                                galleryLauncher.launch("image/*")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Upload PDF") },
+                            leadingIcon = { Icon(Icons.Filled.PictureAsPdf, contentDescription = null) },
+                            onClick = {
+                                showTopMenu = false
+                                pdfLauncher.launch("application/pdf")
+                            }
+                        )
+                    }
+                }
+            }
         }
 
         Column(modifier = Modifier.padding(16.dp)) {
@@ -320,74 +370,76 @@ fun LogRecordScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (state.receiptPhotoUrl != null) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+            if (state.receiptPhotoUrl != null || state.isEdit) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (state.receiptPhotoUrl != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            androidx.compose.material3.OutlinedButton(
+                                onClick = { showMenu = true }
+                            ) {
+                                Icon(Icons.Filled.AttachFile, contentDescription = null)
+                                Spacer(Modifier.size(8.dp))
+                                Text("Replace Receipt")
+                            }
+                            IconButton(
+                                onClick = { viewModel.deleteReceipt() }
+                            ) {
+                                Icon(
+                                    Icons.Filled.DeleteOutline,
+                                    contentDescription = "Delete Receipt",
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    } else {
                         androidx.compose.material3.OutlinedButton(
                             onClick = { showMenu = true }
                         ) {
                             Icon(Icons.Filled.AttachFile, contentDescription = null)
-                            androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-                            Text("Replace Receipt")
-                        }
-                        IconButton(
-                            onClick = { viewModel.deleteReceipt() }
-                        ) {
-                            Icon(
-                                Icons.Filled.DeleteOutline,
-                                contentDescription = "Delete Receipt",
-                                tint = MaterialTheme.colorScheme.error
-                            )
+                            Spacer(Modifier.size(8.dp))
+                            Text("Attach Receipt")
                         }
                     }
-                } else {
-                    androidx.compose.material3.OutlinedButton(
-                        onClick = { showMenu = true }
-                    ) {
-                        Icon(Icons.Filled.AttachFile, contentDescription = null)
-                        androidx.compose.foundation.layout.Spacer(Modifier.size(8.dp))
-                        Text("Attach Receipt")
-                    }
-                }
 
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Take Photo") },
-                        leadingIcon = { Icon(Icons.Filled.AddAPhoto, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                cameraLauncher.launch(null)
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Take Photo") },
+                            leadingIcon = { Icon(Icons.Filled.AddAPhoto, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                                    cameraLauncher.launch(null)
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
                             }
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Upload Image") },
-                        leadingIcon = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            galleryLauncher.launch("image/*")
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Upload PDF") },
-                        leadingIcon = { Icon(Icons.Filled.PictureAsPdf, contentDescription = null) },
-                        onClick = {
-                            showMenu = false
-                            pdfLauncher.launch("application/pdf")
-                        }
-                    )
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Upload Image") },
+                            leadingIcon = { Icon(Icons.Filled.PhotoLibrary, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                galleryLauncher.launch("image/*")
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Upload PDF") },
+                            leadingIcon = { Icon(Icons.Filled.PictureAsPdf, contentDescription = null) },
+                            onClick = {
+                                showMenu = false
+                                pdfLauncher.launch("application/pdf")
+                            }
+                        )
+                    }
                 }
             }
 
@@ -398,8 +450,8 @@ fun LogRecordScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-                    androidx.compose.foundation.layout.Spacer(Modifier.size(12.dp))
-                    Text("Uploading...", color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.size(12.dp))
+                    Text("Scanning & uploading receipt...", color = MaterialTheme.colorScheme.primary)
                 }
             }
 
